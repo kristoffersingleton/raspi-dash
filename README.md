@@ -2,7 +2,7 @@
 
 A real-time "single pane of glass" monitoring dashboard for Raspberry Pi 5.
 
-![RaspiDash](assets/raspi_dash_pony.png)
+![RaspiDash dashboard](assets/dashboard_screenshot.png)
 
 ## Features
 
@@ -20,6 +20,8 @@ A real-time "single pane of glass" monitoring dashboard for Raspberry Pi 5.
 - **Docker** — running containers (graceful if Docker is absent)
 
 All data is sourced from Pi-native interfaces (`/proc`, `vcgencmd`, `pinctrl`, etc.) — no external dependencies beyond Flask.
+
+<img src="assets/raspi_dash_pony.png" width="50%">
 
 ## Requirements
 

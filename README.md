@@ -29,12 +29,18 @@ All data is sourced from Pi-native interfaces (`/proc`, `vcgencmd`, `pinctrl`, e
 
 ## Install & Run
 
+Raspberry Pi OS (Bookworm and later) enforces PEP 668 — it blocks `pip install` outside of a virtual environment to protect system Python packages. Create a venv first:
+
 ```bash
 git clone https://github.com/kristoffersingleton/raspi-dash.git
 cd raspi-dash
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 python server.py
 ```
+
+If you're using an existing venv (e.g. shared across Pi projects), just activate it before the `pip install` step. Remember to point the `ExecStart` path in your systemd unit to the venv's Python binary.
 
 Open `http://<your-pi-ip>:8766` in a browser.
 

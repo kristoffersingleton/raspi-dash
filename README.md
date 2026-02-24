@@ -46,58 +46,56 @@ python server.py --port 8766
 
 ## Customization
 
-### Reordering cards
+Cards are driven by two files: `cards_config.json` controls which cards are active and their order; `templates/cards/` holds one HTML file per card.
 
-Cards are assembled in `server.py` around line 1222. Change the order of the function calls:
+### Reordering or disabling cards
 
-```js
-grid.innerHTML =
-  cardSystem(d.system) +
-  cardTemp(d.temperature) +   // moved up
-  cardCpu(d.cpu) +            // moved down
-  cardMemory(d.memory) +
+Edit `cards_config.json` — change the order of entries or set `"enabled": false`:
+
+```json
+[
+  { "key": "system",      "fn": "cardSystem",  "template": "system",  "enabled": true },
+  { "key": "temperature", "fn": "cardTemp",    "template": "temperature", "enabled": true },
+  { "key": "cpu",         "fn": "cardCpu",     "template": "cpu",     "enabled": true },
+  { "key": "fan",         "fn": "cardFan",     "template": "fan",     "enabled": false },
   ...
+]
 ```
+
+Restart the server — no code changes needed.
 
 ### Adding a new card
 
-**1. Add a backend data source** — add a key to the `StatsCollector.collect()` return dict in `server.py`:
+**1. Add a backend data source** — add a key to `StatsCollector.collect()` in `server.py`:
 
 ```python
-def collect(self):
-    ...
-    return {
-        ...
-        'uptime_raw': open('/proc/uptime').read().split()[0],  # new key
-    }
+data['uptime_raw'] = float(open('/proc/uptime').read().split()[0])
 ```
 
-**2. Expose it from `/api/stats`** — it's included automatically since the whole dict is returned as JSON.
+It's included in `/api/stats` automatically.
 
-**3. Write a JS card function** — add it alongside the other `cardXxx` functions in the `<script>` block:
+**2. Create a card template** — add `templates/cards/uptime_raw.html`:
 
-```js
-function cardUptimeRaw(val) {
-  return '<div class="card">' +
-    '<div class="card-title"><span class="icon">&#x23F1;</span> Uptime Raw</div>' +
-    row('Seconds', val, 'cyan') +
-    '</div>';
-}
+```html
+<script>
+  function cardUptimeRaw(val) {
+    return '<div class="card">' +
+      '<div class="card-title"><span class="icon">&#x23F1;</span> Uptime Raw</div>' +
+      row('Seconds', val, 'cyan') +
+      '</div>';
+  }
+</script>
 ```
 
-Use `span2` or `span3` on the outer div to make it wider:
-```js
-'<div class="card span2">'
+Use `span2` or `span3` on the outer div to make it wider.
+
+**3. Register it in `cards_config.json`:**
+
+```json
+{ "key": "uptime_raw", "fn": "cardUptimeRaw", "template": "uptime_raw", "enabled": true }
 ```
 
-**4. Add it to the grid** — append the call inside `grid.innerHTML`:
-
-```js
-grid.innerHTML =
-  cardSystem(d.system) +
-  ...
-  cardUptimeRaw(d.uptime_raw);  // new card
-```
+That's it — position it anywhere in the list to control where it appears in the grid.
 
 ## License
 

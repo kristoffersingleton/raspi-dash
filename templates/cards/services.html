@@ -1,0 +1,30 @@
+<script>
+    function cardServices(svcs) {
+      if (!svcs) return '';
+      const runningTags = (svcs.running || []).map(function(s) {
+        return '<span class="svc-tag running" title="' + s.description.replace(/"/g,'&quot;') + '"><span class="dot"></span>' + s.name + '</span>';
+      }).join('');
+      const failedTags = (svcs.failed || []).map(function(s) {
+        return '<span class="svc-tag failed" title="' + s.description.replace(/"/g,'&quot;') + '"><span class="dot"></span>' + s.name + '</span>';
+      }).join('');
+      const inactiveTags = (svcs.inactive || []).map(function(s) {
+        return '<span class="svc-tag inactive" title="' + s.description.replace(/"/g,'&quot;') + '">' + s.name + '</span>';
+      }).join('');
+      const failedSection = (svcs.failed||[]).length ?
+        '<div class="svc-section"><div class="svc-heading" style="color:var(--red)"><span class="dot" style="background:var(--red)"></span>Failed</div><div class="svc-list">' + failedTags + '</div></div>' : '';
+      return '<div class="card span3">' +
+        '<div class="card-title">' +
+        '<span class="icon">&#x2699;</span> Services' +
+        '<span style="margin-left:auto;display:flex;gap:10px;font-size:11px;font-weight:400">' +
+        '<span style="color:var(--green)">' + (svcs.running||[]).length + ' running</span>' +
+        ((svcs.failed||[]).length ? '<span style="color:var(--red)">' + svcs.failed.length + ' failed</span>' : '') +
+        '<span style="color:var(--muted)">' + (svcs.inactive||[]).length + ' inactive</span>' +
+        '</span>' +
+        '</div>' +
+        failedSection +
+        '<div class="svc-section"><div class="svc-heading" style="color:var(--green)"><span class="dot" style="background:var(--green)"></span>Running</div><div class="svc-list">' + runningTags + '</div></div>' +
+        '<details style="margin-top:12px"><summary style="cursor:pointer;font-size:11px;color:var(--muted);user-select:none">&#x25B6; Inactive / exited (' + (svcs.inactive||[]).length + ')</summary>' +
+        '<div class="svc-list" style="margin-top:8px">' + inactiveTags + '</div></details>' +
+        '</div>';
+    }
+</script>

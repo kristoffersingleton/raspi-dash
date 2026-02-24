@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaspiDash</title>
+  <style>
+    :root {
+      --bg: #09101f;
+      --card: #0f1829;
+      --card-border: #1e2d45;
+      --card-hover: #141e32;
+      --text: #e8eef8;
+      --muted: #5a7090;
+      --label: #8da8c8;
+      --green: #3dd68c;
+      --yellow: #f5c542;
+      --red: #f26b6b;
+      --blue: #5ca8ff;
+      --purple: #a98cfa;
+      --cyan: #3dd9d9;
+      --orange: #f5934e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+
+    .header { position: sticky; top: 0; z-index: 100; background: rgba(9,16,31,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--card-border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+    .logo { font-size: 22px; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; }
+    .logo span { color: var(--green); }
+    .badges { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .badge { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); }
+    .badge.ok { background: rgba(61,214,140,0.1); border-color: rgba(61,214,140,0.3); color: var(--green); }
+    .badge.warn { background: rgba(245,197,66,0.1); border-color: rgba(245,197,66,0.3); color: var(--yellow); }
+    .badge.err { background: rgba(242,107,107,0.1); border-color: rgba(242,107,107,0.3); color: var(--red); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .dot.pulse { animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 currentColor} 50%{opacity:.7;box-shadow:0 0 6px 2px currentColor} }
+    .updated { font-size: 11px; color: var(--muted); }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+    @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+    .span2 { grid-column: span 2; }
+    .span3 { grid-column: span 3; }
+    @media (max-width: 1100px) { .span3 { grid-column: span 2; } }
+    @media (max-width: 680px) { .span2, .span3 { grid-column: span 1; } }
+
+    .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 18px; transition: border-color .2s, box-shadow .2s; }
+    .card:hover { border-color: rgba(92,168,255,0.3); box-shadow: 0 0 20px rgba(92,168,255,0.08); }
+    .card-title { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .card-title .icon { font-size: 14px; }
+
+    .row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid rgba(30,45,69,0.5); }
+    .row:last-child { border-bottom: none; }
+    .lbl { color: var(--label); font-size: 12px; }
+    .val { font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace; font-size: 13px; color: var(--text); }
+    .val.ok { color: var(--green); }
+    .val.warn { color: var(--yellow); }
+    .val.err { color: var(--red); }
+    .val.blue { color: var(--blue); }
+    .val.purple { color: var(--purple); }
+    .val.cyan { color: var(--cyan); }
+    .val.orange { color: var(--orange); }
+    .val.mu { color: var(--muted); }
+    .big-val { font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace; font-size: 36px; font-weight: 700; line-height: 1; }
+    .big-unit { font-size: 14px; color: var(--muted); margin-left: 4px; }
+
+    .bar-wrap { background: rgba(255,255,255,0.06); border-radius: 4px; height: 6px; margin: 8px 0 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width .5s; }
+    .bar-fill.fill-green { background: linear-gradient(90deg, var(--green), #2ab570); }
+    .bar-fill.fill-yellow { background: linear-gradient(90deg, var(--yellow), #e0a800); }
+    .bar-fill.fill-red { background: linear-gradient(90deg, var(--red), #c84040); }
+    .bar-fill.fill-blue { background: linear-gradient(90deg, var(--blue), #3a7fd4); }
+    .bar-fill.fill-purple { background: linear-gradient(90deg, var(--purple), #7b6bc4); }
+
+    .proc-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .proc-table th { color: var(--muted); text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--card-border); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+    .proc-table td { padding: 4px 8px; border-bottom: 1px solid rgba(30,45,69,0.4); font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace; }
+    .proc-table tr:last-child td { border-bottom: none; }
+    .proc-table tr:hover td { background: rgba(255,255,255,0.03); }
+    .proc-bar { display: inline-block; height: 6px; background: var(--blue); border-radius: 3px; vertical-align: middle; margin-right: 4px; max-width: 60px; }
+
+    .svc-section { margin-bottom: 14px; }
+    .svc-section:last-child { margin-bottom: 0; }
+    .svc-heading { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .svc-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .svc-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace; border: 1px solid; }
+    .svc-tag.running { background: rgba(61,214,140,0.08); border-color: rgba(61,214,140,0.25); color: var(--green); }
+    .svc-tag.failed { background: rgba(242,107,107,0.08); border-color: rgba(242,107,107,0.25); color: var(--red); }
+    .svc-tag.inactive { background: rgba(90,112,144,0.08); border-color: rgba(90,112,144,0.2); color: var(--muted); }
+
+    .gpio-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .gpio-table td { padding: 3px 6px; }
+    .gpio-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .pin-num { font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace; font-size: 11px; color: var(--muted); width: 28px; text-align: right; }
+    .pin-dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; vertical-align: middle; margin: 0 4px; border: 2px solid; }
+    .pin-dot.pwr { background: rgba(245,147,78,0.3); border-color: var(--orange); }
+    .pin-dot.gnd { background: rgba(90,112,144,0.2); border-color: var(--muted); }
+    .pin-dot.gpio-input { background: rgba(61,214,140,0.2); border-color: var(--green); }
+    .pin-dot.gpio-output { background: rgba(92,168,255,0.2); border-color: var(--blue); }
+    .pin-dot.gpio-alt { background: rgba(169,140,250,0.2); border-color: var(--purple); }
+    .pin-dot.gpio-none { background: rgba(90,112,144,0.1); border-color: rgba(90,112,144,0.3); }
+    .pin-label { font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace; font-size: 11px; }
+    .pin-label.pwr { color: var(--orange); }
+    .pin-label.gnd { color: var(--muted); }
+    .pin-label.gpio-input { color: var(--green); }
+    .pin-label.gpio-output { color: var(--blue); }
+    .pin-label.gpio-alt { color: var(--purple); }
+    .pin-label.gpio-none { color: var(--muted); font-style: italic; }
+    .pin-level { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-left: 4px; }
+    .pin-level.hi { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .pin-level.lo { background: var(--muted); }
+    .pin-level.na { background: transparent; }
+    .gpio-divider { width: 2px; background: var(--card-border); }
+
+    .fan-modes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+    .fan-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--card-border); background: transparent; color: var(--text); font-size: 11px; cursor: pointer; transition: all .15s; }
+    .fan-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .fan-btn.active { background: rgba(92,168,255,0.15); border-color: var(--blue); color: var(--blue); }
+
+    .footer { text-align: center; padding: 16px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--card-border); margin-top: 8px; }
+
+    .iface-up { color: var(--green); }
+    .iface-down { color: var(--red); }
+    .net-rate { font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="logo" style="display:flex;align-items:center;gap:10px"><img src="/logo.png" width="40" height="40" style="border-radius:50%">Raspi<span>Dash</span></div>
+    <div class="badges">
+      <div id="tempBadge" class="badge ok"><span class="dot pulse"></span>--&#176;C</div>
+      <div id="throttleBadge" class="badge ok"><span class="dot pulse"></span>Nominal</div>
+      <div class="badge"><span id="updated" class="updated">Loading...</span></div>
+    </div>
+  </header>
+  <div class="grid" id="grid">
+    <div style="color:var(--muted);padding:40px;grid-column:span 3;text-align:center">Collecting data...</div>
+  </div>
+  <div class="footer">RaspiDash &middot; Auto-refreshes every 2s &middot; <span id="pollCount"></span></div>
+
+  <script>
+    let _polls = 0;
+    let _fanMode = 3;
+    let _startTime = Date.now();
+
+    function fmtBytes(b, decimals) {
+      if (decimals === undefined) decimals = 1;
+      if (b === null || b === undefined) return 'N/A';
+      const units = ['B','KB','MB','GB','TB'];
+      let i = 0;
+      while (b >= 1024 && i < units.length-1) { b /= 1024; i++; }
+      return b.toFixed(decimals) + ' ' + units[i];
+    }
+
+    function fmtRate(kbs) {
+      if (kbs === null || kbs === undefined || kbs < 0) return '0 KB/s';
+      if (kbs >= 1024) return (kbs/1024).toFixed(1) + ' MB/s';
+      return kbs.toFixed(0) + ' KB/s';
+    }
+
+    function barCls(pct) {
+      if (pct >= 90) return 'fill-red';
+      if (pct >= 70) return 'fill-yellow';
+      return 'fill-blue';
+    }
+
+    function tempCls(c) {
+      if (c >= 80) return 'err';
+      if (c >= 60) return 'warn';
+      return 'ok';
+    }
+
+    function row(lbl, val, cls) {
+      cls = cls || '';
+      return '<div class="row"><span class="lbl">' + lbl + '</span><span class="val ' + cls + '">' + val + '</span></div>';
+    }
+
+    function barHtml(pct, cls) {
+      return '<div class="bar-wrap"><div class="bar-fill ' + cls + '" style="width:' + Math.min(pct,100).toFixed(1) + '%"></div></div>';
+    }
+  </script>
+
+  {% for card in cards %}
+  {% include "cards/" + card.template + ".html" %}
+  {% endfor %}
+
+  <script>
+    async function refresh() {
+      try {
+        const res = await fetch('/api/stats');
+        const d = await res.json();
+        _polls++;
+
+        const tempBadge = document.getElementById('tempBadge');
+        if (d.temperature && tempBadge) {
+          const t = d.temperature.cpu_c;
+          const cls = t >= 80 ? 'err' : t >= 60 ? 'warn' : 'ok';
+          tempBadge.className = 'badge ' + cls;
+          tempBadge.innerHTML = '<span class="dot pulse"></span>' + t.toFixed(1) + '&#176;C';
+        }
+
+        const throttleBadge = document.getElementById('throttleBadge');
+        if (d.cpu && throttleBadge) {
+          const c = d.cpu;
+          const anyThrottle = c.under_voltage || c.freq_capped || c.throttled || c.soft_temp;
+          throttleBadge.className = 'badge ' + (anyThrottle ? 'warn' : 'ok');
+          throttleBadge.innerHTML = anyThrottle ? '<span class="dot pulse"></span>Throttled' : '<span class="dot pulse"></span>Nominal';
+        }
+
+        document.getElementById('updated').textContent = 'Updated just now \u00b7 polls: ' + _polls;
+
+        const pollCount = document.getElementById('pollCount');
+        if (pollCount) pollCount.textContent = 'Poll #' + _polls;
+
+        const grid = document.getElementById('grid');
+        grid.innerHTML =
+          {% for card in cards %}
+          {{ card.fn }}(d.{{ card.key }}){% if not loop.last %} +{% endif %}
+
+          {% endfor %};
+
+      } catch(e) {
+        console.warn('Refresh error:', e);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

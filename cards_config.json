@@ -1,0 +1,14 @@
+[
+  { "key": "system",      "fn": "cardSystem",    "template": "system",      "enabled": true },
+  { "key": "cpu",         "fn": "cardCpu",       "template": "cpu",         "enabled": true },
+  { "key": "temperature", "fn": "cardTemp",      "template": "temperature", "enabled": true },
+  { "key": "memory",      "fn": "cardMemory",    "template": "memory",      "enabled": true },
+  { "key": "fan",         "fn": "cardFan",       "template": "fan",         "enabled": true },
+  { "key": "disk",        "fn": "cardDisk",      "template": "disk",        "enabled": true },
+  { "key": "network",     "fn": "cardNetwork",   "template": "network",     "enabled": true },
+  { "key": "processes",   "fn": "cardProcesses", "template": "processes",   "enabled": true },
+  { "key": "services",    "fn": "cardServices",  "template": "services",    "enabled": true },
+  { "key": "gpio",        "fn": "cardGpio",      "template": "gpio",        "enabled": true },
+  { "key": "usb",         "fn": "cardUsb",       "template": "usb",         "enabled": true },
+  { "key": "docker",      "fn": "cardDocker",    "template": "docker",      "enabled": true }
+]

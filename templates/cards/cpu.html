@@ -1,0 +1,29 @@
+<script>
+    function cardCpu(c) {
+      if (!c) return '';
+      const flags = [];
+      if (c.under_voltage) flags.push('<span style="color:var(--red);font-size:11px">&#x26A1; Under-voltage</span>');
+      if (c.freq_capped) flags.push('<span style="color:var(--yellow);font-size:11px">&#x26A0; Freq capped</span>');
+      if (c.throttled) flags.push('<span style="color:var(--red);font-size:11px">&#x1F525; Throttled</span>');
+      if (c.soft_temp) flags.push('<span style="color:var(--yellow);font-size:11px">&#x1F321; Soft temp limit</span>');
+      const throttleHtml = flags.length ? flags.join(' ') : '<span class="val ok">&#x2713; OK</span>';
+      const loadCls = c.load_avg[0] > 3 ? 'err' : c.load_avg[0] > 1.5 ? 'warn' : 'ok';
+      let hist = '';
+      if (c.under_voltage_occurred || c.throttled_occurred || c.freq_capped_occurred || c.soft_temp_occurred) {
+        const parts = [];
+        if (c.under_voltage_occurred) parts.push('&#x26A1;UV');
+        if (c.throttled_occurred) parts.push('&#x1F525;Thr');
+        if (c.freq_capped_occurred) parts.push('&#x26A0;FC');
+        if (c.soft_temp_occurred) parts.push('&#x1F321;ST');
+        hist = row('Historical', parts.join(' '), 'mu');
+      }
+      return '<div class="card">' +
+        '<div class="card-title"><span class="icon">&#x2699;</span> CPU</div>' +
+        row('Frequency', c.freq_mhz ? c.freq_mhz.toFixed(0)+' MHz' : 'N/A', 'blue') +
+        row('Core Voltage', c.voltage ? c.voltage.toFixed(4)+' V' : 'N/A', 'cyan') +
+        row('Load 1/5/15', c.load_avg.map(function(v){return v.toFixed(2);}).join(' / '), loadCls) +
+        '<div class="row"><span class="lbl">Throttle</span><span>' + throttleHtml + '</span></div>' +
+        hist +
+        '</div>';
+    }
+</script>

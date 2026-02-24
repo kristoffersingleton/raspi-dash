@@ -1,0 +1,28 @@
+<script>
+    function cardMemory(m) {
+      if (!m) return '';
+      const ramCls = barCls(m.pct);
+      const swapCls = barCls(m.swap_pct);
+      const swapLabel = m.swap_total_mb >= 1024 ? (m.swap_total_mb/1024).toFixed(1)+' GB' : m.swap_total_mb.toFixed(0)+' MB';
+      return '<div class="card span2">' +
+        '<div class="card-title"><span class="icon">&#x1F4BE;</span> Memory</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">' +
+        '<div>' +
+        '<div style="font-size:11px;color:var(--label);margin-bottom:4px">RAM &middot; LPDDR4X</div>' +
+        '<div style="font-family:monospace">' + (m.used_mb/1024).toFixed(2) + ' GB used</div>' +
+        '<div style="font-size:11px;color:var(--muted)">' + (m.used_mb/1024).toFixed(2) + ' / ' + (m.total_mb/1024).toFixed(2) + ' GB</div>' +
+        barHtml(m.pct, ramCls) +
+        '<div style="font-size:11px;color:var(--muted)">' + m.pct.toFixed(1) + '% &middot; ' + (m.available_mb/1024).toFixed(2) + ' GB free</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:4px">Buffers ' + (m.buffers_mb/1024).toFixed(2) + ' GB &middot; Cache ' + (m.cached_mb/1024).toFixed(2) + ' GB</div>' +
+        '</div>' +
+        '<div>' +
+        '<div style="font-size:11px;color:var(--label);margin-bottom:4px">Swap &middot; ' + swapLabel + '</div>' +
+        '<div style="font-family:monospace">' + m.swap_used_mb.toFixed(0) + ' MB used</div>' +
+        '<div style="font-size:11px;color:var(--muted)">' + m.swap_used_mb.toFixed(0) + ' / ' + m.swap_total_mb.toFixed(0) + ' MB</div>' +
+        barHtml(m.swap_pct, swapCls) +
+        '<div style="font-size:11px;color:' + (m.swap_pct > 50 ? 'var(--yellow)' : 'var(--muted)') + '">' + m.swap_pct.toFixed(1) + '% used</div>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+    }
+</script>

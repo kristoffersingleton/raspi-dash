@@ -1,0 +1,68 @@
+<script>
+    function pinDotClass(pin) {
+      if (pin.type === 'pwr') return 'pwr';
+      if (pin.type === 'gnd') return 'gnd';
+      const dir = pin.gpio ? pin.gpio.direction : 'none';
+      if (dir === 'input') return 'gpio-input';
+      if (dir === 'output') return 'gpio-output';
+      if (dir === 'alt') return 'gpio-alt';
+      return 'gpio-none';
+    }
+
+    function pinLabelText(pin) {
+      if (pin.type === 'pwr') return pin.label;
+      if (pin.type === 'gnd') return 'GND';
+      const g = pin.gpio;
+      if (!g) return 'GPIO' + pin.bcm;
+      if (g.label && g.label !== 'input' && g.label !== 'output' && g.label !== 'none') return 'BCM' + pin.bcm + ' &middot; ' + g.label;
+      if (g.direction === 'output') return 'BCM' + pin.bcm + ' &rarr; OUT';
+      if (g.direction === 'input') return 'BCM' + pin.bcm + ' &larr; IN';
+      if (g.direction === 'alt') return 'BCM' + pin.bcm + ' &middot; ALT' + (g.alt_num !== null ? g.alt_num : '');
+      return 'BCM' + pin.bcm;
+    }
+
+    function pinLevelDot(pin) {
+      if (!pin.gpio || pin.type !== 'gpio') return '';
+      const lvl = pin.gpio.level;
+      if (lvl === 'hi') return '<span class="pin-level hi" title="HIGH"></span>';
+      if (lvl === 'lo') return '<span class="pin-level lo" title="LOW"></span>';
+      return '<span class="pin-level na"></span>';
+    }
+
+    function cardGpio(pins) {
+      if (!pins || !pins.length) return '<div class="card span3"><div class="card-title"><span class="icon">&#x1F4CC;</span> GPIO Header</div><div style="color:var(--muted)">GPIO data unavailable (pinctrl not found)</div></div>';
+      let tableRows = '';
+      for (let i = 0; i < 40; i += 2) {
+        const left = pins[i];
+        const right = pins[i+1];
+        if (!left || !right) continue;
+        const leftDotCls = pinDotClass(left);
+        const rightDotCls = pinDotClass(right);
+        const leftLblCls = left.type === 'pwr' ? 'pwr' : left.type === 'gnd' ? 'gnd' : (left.gpio ? 'gpio-' + left.gpio.direction : 'gpio-none');
+        const rightLblCls = right.type === 'pwr' ? 'pwr' : right.type === 'gnd' ? 'gnd' : (right.gpio ? 'gpio-' + right.gpio.direction : 'gpio-none');
+        tableRows += '<tr>' +
+          '<td style="text-align:right"><span class="pin-label ' + leftLblCls + '">' + pinLabelText(left) + '</span>' + pinLevelDot(left) + '</td>' +
+          '<td style="text-align:right" class="pin-num">' + left.phys + '</td>' +
+          '<td><span class="pin-dot ' + leftDotCls + '"></span></td>' +
+          '<td class="gpio-divider">&nbsp;</td>' +
+          '<td><span class="pin-dot ' + rightDotCls + '"></span></td>' +
+          '<td class="pin-num">' + right.phys + '</td>' +
+          '<td><span class="pin-label ' + rightLblCls + '">' + pinLabelText(right) + '</span>' + pinLevelDot(right) + '</td>' +
+          '</tr>';
+      }
+      const legend = '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11px">' +
+        '<span><span class="pin-dot gpio-output" style="display:inline-block"></span> <span style="color:var(--blue)">Output</span></span>' +
+        '<span><span class="pin-dot gpio-input" style="display:inline-block"></span> <span style="color:var(--green)">Input</span></span>' +
+        '<span><span class="pin-dot gpio-alt" style="display:inline-block"></span> <span style="color:var(--purple)">Alt Function</span></span>' +
+        '<span><span class="pin-dot pwr" style="display:inline-block"></span> <span style="color:var(--orange)">Power</span></span>' +
+        '<span><span class="pin-dot gnd" style="display:inline-block"></span> <span style="color:var(--muted)">GND</span></span>' +
+        '<span><span class="pin-level hi" style="display:inline-block"></span> <span style="color:var(--muted)">HI</span></span>' +
+        '<span><span class="pin-level lo" style="display:inline-block"></span> <span style="color:var(--muted)">LO</span></span>' +
+        '</div>';
+      return '<div class="card span3">' +
+        '<div class="card-title"><span class="icon">&#x1F4CC;</span> GPIO 40-Pin Header</div>' +
+        '<div style="overflow-x:auto"><table class="gpio-table"><tbody>' + tableRows + '</tbody></table></div>' +
+        legend +
+        '</div>';
+    }
+</script>

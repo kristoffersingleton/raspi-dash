@@ -1,0 +1,20 @@
+<script>
+    function cardDisk(disks) {
+      if (!disks || !disks.length) return '<div class="card"><div class="card-title"><span class="icon">&#x1F4BF;</span> Disk</div><div style="color:var(--muted)">No disk data</div></div>';
+      const rows = disks.map(function(d) {
+        const cls = barCls(d.pct);
+        return '<div style="margin-bottom:12px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px">' +
+          '<span style="color:var(--blue);font-family:monospace">' + d.mount + '</span>' +
+          '<span style="color:var(--muted)">' + d.fstype + '</span>' +
+          '</div>' +
+          barHtml(d.pct, cls) +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">' +
+          '<span>' + d.used_gb.toFixed(1) + ' / ' + d.total_gb.toFixed(1) + ' GB (' + d.pct.toFixed(0) + '%)</span>' +
+          '<span style="font-family:monospace">&#x2193;' + fmtRate(d.read_kbs) + ' &#x2191;' + fmtRate(d.write_kbs) + '</span>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+      return '<div class="card"><div class="card-title"><span class="icon">&#x1F4BF;</span> Disk</div>' + rows + '</div>';
+    }
+</script>

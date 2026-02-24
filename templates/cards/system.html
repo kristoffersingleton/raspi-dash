@@ -1,0 +1,14 @@
+<script>
+    function cardSystem(s) {
+      if (!s) return '';
+      return '<div class="card">' +
+        '<div class="card-title"><span class="icon">&#x1F5A5;</span> System</div>' +
+        row('Hostname', s.hostname, 'blue') +
+        row('Model', s.model) +
+        row('OS', s.os) +
+        row('Kernel', s.kernel, 'mu') +
+        row('Uptime', s.uptime, 'cyan') +
+        row('CPU Cores', s.cpu_count) +
+        '</div>';
+    }
+</script>

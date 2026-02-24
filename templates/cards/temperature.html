@@ -1,0 +1,17 @@
+<script>
+    function cardTemp(t) {
+      if (!t) return '';
+      const cls = tempCls(t.cpu_c);
+      const colorMap = {ok:'var(--green)',warn:'var(--yellow)',err:'var(--red)'};
+      const color = colorMap[cls] || 'var(--text)';
+      const emoji = t.cpu_c < 60 ? '&#x2744; Cool' : t.cpu_c < 80 ? '&#x2668; Warm' : '&#x1F525; Hot';
+      return '<div class="card">' +
+        '<div class="card-title"><span class="icon">&#x1F321;</span> Temperature</div>' +
+        '<div style="text-align:center;padding:12px 0 8px">' +
+        '<span class="big-val" style="color:' + color + '">' + t.cpu_c.toFixed(1) + '</span><span class="big-unit">&#176;C</span>' +
+        '<div style="color:var(--muted);font-size:12px;margin-top:4px">' + t.cpu_f.toFixed(1) + ' &#176;F</div>' +
+        '</div>' +
+        '<div style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px">' + emoji + '</div>' +
+        '</div>';
+    }
+</script>

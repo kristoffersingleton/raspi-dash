@@ -1,0 +1,10 @@
+<script>
+    function cardUsb(usb) {
+      const items = usb || [];
+      if (!items.length) return '<div class="card"><div class="card-title"><span class="icon">&#x1F50C;</span> USB Devices</div><div style="color:var(--muted)">No USB devices</div></div>';
+      const list = items.map(function(d) {
+        return '<div style="padding:4px 0;border-bottom:1px solid rgba(30,45,69,0.4);font-size:12px;font-family:monospace">' + d.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+      }).join('');
+      return '<div class="card"><div class="card-title"><span class="icon">&#x1F50C;</span> USB Devices <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">' + items.length + '</span></div>' + list + '</div>';
+    }
+</script>

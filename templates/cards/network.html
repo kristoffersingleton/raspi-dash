@@ -1,0 +1,22 @@
+<script>
+    function cardNetwork(nets) {
+      if (!nets || !nets.length) return '<div class="card span2"><div class="card-title"><span class="icon">&#x1F310;</span> Network</div><div style="color:var(--muted)">No interfaces</div></div>';
+      const cards = nets.map(function(n) {
+        const stateColor = n.up ? 'var(--green)' : 'var(--red)';
+        const ips = n.ips.length ? n.ips.join(', ') : 'No IP';
+        return '<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--card-border)">' +
+          '<div style="display:flex;justify-content:space-between;margin-bottom:8px">' +
+          '<span style="font-weight:600;color:var(--blue);font-family:monospace">' + n.iface + '</span>' +
+          '<span style="font-size:11px;color:' + stateColor + '">' + (n.up ? '&#x25CF; UP' : '&#x25CB; DOWN') + '</span>' +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-family:monospace">' + ips + '</div>' +
+          '<div style="display:flex;gap:16px;font-size:12px;font-family:monospace">' +
+          '<div><div style="color:var(--muted);font-size:10px">&#x2193; RX</div><div style="color:var(--green)">' + fmtRate(n.rx_kbs) + '</div><div style="font-size:10px;color:var(--muted)">' + fmtBytes(n.rx_bytes_total) + ' total</div></div>' +
+          '<div><div style="color:var(--muted);font-size:10px">&#x2191; TX</div><div style="color:var(--cyan)">' + fmtRate(n.tx_kbs) + '</div><div style="font-size:10px;color:var(--muted)">' + fmtBytes(n.tx_bytes_total) + ' total</div></div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+      const gridStyle = nets.length > 1 ? 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px' : '';
+      return '<div class="card span2"><div class="card-title"><span class="icon">&#x1F310;</span> Network</div><div style="' + gridStyle + '">' + cards + '</div></div>';
+    }
+</script>

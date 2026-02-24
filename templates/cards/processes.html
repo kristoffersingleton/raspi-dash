@@ -1,0 +1,27 @@
+<script>
+    function cardProcesses(procs) {
+      if (!procs || !procs.length) return '<div class="card span3"><div class="card-title"><span class="icon">&#x1F4CA;</span> Processes</div><div style="color:var(--muted)">No data</div></div>';
+      const rows = procs.map(function(p) {
+        const cpuWidth = Math.min(p.cpu_pct * 2, 60);
+        const cpuColor = p.cpu_pct > 50 ? 'var(--red)' : p.cpu_pct > 20 ? 'var(--yellow)' : 'var(--blue)';
+        const memColor = p.mem_pct > 20 ? 'var(--yellow)' : 'var(--text)';
+        return '<tr>' +
+          '<td style="color:var(--muted)">' + p.pid + '</td>' +
+          '<td style="color:var(--label)">' + p.user.substring(0,12) + '</td>' +
+          '<td><span class="proc-bar" style="width:' + cpuWidth + 'px;background:' + cpuColor + '"></span><span style="color:' + cpuColor + '">' + p.cpu_pct.toFixed(1) + '%</span></td>' +
+          '<td style="color:' + memColor + '">' + p.mem_pct.toFixed(1) + '%</td>' +
+          '<td style="color:var(--muted)">' + p.rss_mb.toFixed(0) + ' MB</td>' +
+          '<td style="color:var(--text);font-size:11px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.command.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</td>' +
+          '</tr>';
+      }).join('');
+      return '<div class="card span3">' +
+        '<div class="card-title"><span class="icon">&#x1F4CA;</span> Top Processes <span style="color:var(--muted);font-weight:400;font-size:10px">by CPU</span></div>' +
+        '<div style="overflow-x:auto">' +
+        '<table class="proc-table">' +
+        '<thead><tr><th>PID</th><th>User</th><th>CPU%</th><th>MEM%</th><th>RSS</th><th>Command</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+        '</div>' +
+        '</div>';
+    }
+</script>

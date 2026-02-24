@@ -97,6 +97,49 @@ Use `span2` or `span3` on the outer div to make it wider.
 
 That's it — position it anywhere in the list to control where it appears in the grid.
 
+## Running as a service
+
+To have RaspiDash start automatically on boot, create a systemd service unit.
+
+**1. Create the service file:**
+
+```bash
+sudo nano /etc/systemd/system/raspidash.service
+```
+
+```ini
+[Unit]
+Description=RaspiDash monitoring dashboard
+After=network.target
+
+[Service]
+ExecStart=/path/to/your/venv/bin/python /home/pi/raspi-dash/server.py
+WorkingDirectory=/home/pi/raspi-dash
+Restart=on-failure
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Replace `/path/to/your/venv` with your Python environment and adjust the `User` and paths to match your setup.
+
+**2. Enable and start it:**
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable raspidash
+sudo systemctl start raspidash
+```
+
+**3. Check status:**
+
+```bash
+sudo systemctl status raspidash
+```
+
+The dashboard will now start on every boot and restart automatically if it crashes.
+
 ## License
 
 Apache 2.0

@@ -44,6 +44,61 @@ Open `http://<your-pi-ip>:8766` in a browser.
 python server.py --port 8766
 ```
 
+## Customization
+
+### Reordering cards
+
+Cards are assembled in `server.py` around line 1222. Change the order of the function calls:
+
+```js
+grid.innerHTML =
+  cardSystem(d.system) +
+  cardTemp(d.temperature) +   // moved up
+  cardCpu(d.cpu) +            // moved down
+  cardMemory(d.memory) +
+  ...
+```
+
+### Adding a new card
+
+**1. Add a backend data source** — add a key to the `StatsCollector.collect()` return dict in `server.py`:
+
+```python
+def collect(self):
+    ...
+    return {
+        ...
+        'uptime_raw': open('/proc/uptime').read().split()[0],  # new key
+    }
+```
+
+**2. Expose it from `/api/stats`** — it's included automatically since the whole dict is returned as JSON.
+
+**3. Write a JS card function** — add it alongside the other `cardXxx` functions in the `<script>` block:
+
+```js
+function cardUptimeRaw(val) {
+  return '<div class="card">' +
+    '<div class="card-title"><span class="icon">&#x23F1;</span> Uptime Raw</div>' +
+    row('Seconds', val, 'cyan') +
+    '</div>';
+}
+```
+
+Use `span2` or `span3` on the outer div to make it wider:
+```js
+'<div class="card span2">'
+```
+
+**4. Add it to the grid** — append the call inside `grid.innerHTML`:
+
+```js
+grid.innerHTML =
+  cardSystem(d.system) +
+  ...
+  cardUptimeRaw(d.uptime_raw);  // new card
+```
+
 ## License
 
 Apache 2.0

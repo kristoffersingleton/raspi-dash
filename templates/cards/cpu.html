@@ -17,11 +17,34 @@
         if (c.soft_temp_occurred) parts.push('&#x1F321;ST');
         hist = row('Historical', parts.join(' '), 'mu');
       }
+      let coresHtml = '';
+      if (c.cores && c.cores.length) {
+        const bars = c.cores.map(function(core) {
+          const pct = core.pct;
+          const clr = pct >= 80 ? 'var(--red)' : pct >= 50 ? 'var(--yellow)' : 'var(--green)';
+          const filled = Math.round(pct / 10);
+          const bar = '&#x2588;'.repeat(filled) + '&#x2591;'.repeat(10 - filled);
+          return '<div style="display:flex;align-items:center;gap:6px;font-size:11px;font-family:monospace;padding:1px 0">' +
+            '<span style="color:var(--muted);min-width:22px">C' + core.id + '</span>' +
+            '<span style="color:' + clr + ';letter-spacing:-1px">' + bar + '</span>' +
+            '<span style="color:' + clr + ';min-width:32px;text-align:right">' + pct.toFixed(0) + '%</span>' +
+            '</div>';
+        });
+        const half = Math.ceil(c.cores.length / 2);
+        const col1 = bars.slice(0, half).join('');
+        const col2 = bars.slice(half).join('');
+        coresHtml = '<div class="row" style="align-items:flex-start"><span class="lbl">Per-Core</span>' +
+          '<div style="display:flex;gap:12px">' +
+          '<div>' + col1 + '</div>' +
+          (col2 ? '<div>' + col2 + '</div>' : '') +
+          '</div></div>';
+      }
       return '<div class="card">' +
         '<div class="card-title"><span class="icon">&#x2699;</span> CPU</div>' +
         row('Frequency', c.freq_mhz ? c.freq_mhz.toFixed(0)+' MHz' : 'N/A', 'blue') +
         row('Core Voltage', c.voltage ? c.voltage.toFixed(4)+' V' : 'N/A', 'cyan') +
         row('Load 1/5/15', c.load_avg.map(function(v){return v.toFixed(2);}).join(' / '), loadCls) +
+        coresHtml +
         '<div class="row"><span class="lbl">Throttle</span><span>' + throttleHtml + '</span></div>' +
         hist +
         '</div>';

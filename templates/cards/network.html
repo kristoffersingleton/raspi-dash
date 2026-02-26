@@ -4,6 +4,15 @@
       const cards = nets.map(function(n) {
         const stateColor = n.up ? 'var(--green)' : 'var(--red)';
         const ips = n.ips.length ? n.ips.join(', ') : 'No IP';
+        const rxErrs = (n.rx_errors || 0) + (n.rx_dropped || 0);
+        const txErrs = (n.tx_errors || 0) + (n.tx_dropped || 0);
+        let errHtml = '';
+        if (rxErrs > 0 || txErrs > 0) {
+          errHtml = '<div style="margin-top:6px;font-size:10px;font-family:monospace;color:var(--red)">' +
+            (rxErrs > 0 ? '&#x2193; err:' + n.rx_errors + ' drop:' + n.rx_dropped + '  ' : '') +
+            (txErrs > 0 ? '&#x2191; err:' + n.tx_errors + ' drop:' + n.tx_dropped : '') +
+            '</div>';
+        }
         return '<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--card-border)">' +
           '<div style="display:flex;justify-content:space-between;margin-bottom:8px">' +
           '<span style="font-weight:600;color:var(--blue);font-family:monospace">' + n.iface + '</span>' +
@@ -14,6 +23,7 @@
           '<div><div style="color:var(--muted);font-size:10px">&#x2193; RX</div><div style="color:var(--green)">' + fmtRate(n.rx_kbs) + '</div><div style="font-size:10px;color:var(--muted)">' + fmtBytes(n.rx_bytes_total) + ' total</div></div>' +
           '<div><div style="color:var(--muted);font-size:10px">&#x2191; TX</div><div style="color:var(--cyan)">' + fmtRate(n.tx_kbs) + '</div><div style="font-size:10px;color:var(--muted)">' + fmtBytes(n.tx_bytes_total) + ' total</div></div>' +
           '</div>' +
+          errHtml +
           '</div>';
       }).join('');
       const gridStyle = nets.length > 1 ? 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px' : '';

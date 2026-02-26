@@ -1,6 +1,7 @@
 <script>
     function cardSystem(s) {
       if (!s) return '';
+      const ntpSynced = s.ntp_synced;
       return '<div class="card">' +
         '<div class="card-title"><span class="icon">&#x1F5A5;</span> System</div>' +
         row('Hostname', s.hostname, 'blue') +
@@ -9,6 +10,8 @@
         row('Kernel', s.kernel, 'mu') +
         row('Uptime', s.uptime, 'cyan') +
         row('CPU Cores', s.cpu_count) +
+        row('Time Sync', ntpSynced ? '&#x2713; Synced' : '&#x2717; Not synced', ntpSynced ? 'ok' : 'err') +
+        row('Timezone', s.timezone || 'Unknown', 'mu') +
         '</div>';
     }
 </script>

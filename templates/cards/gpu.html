@@ -1,0 +1,15 @@
+<script>
+    function cardGpu(g) {
+      if (!g) return '';
+      const v3d = g.v3d_mhz;
+      const hevc = g.hevc_mhz;
+      const mem = g.gpu_mem_mb;
+      const v3dCls = v3d === null || v3d === undefined ? 'mu' : v3d >= 400 ? 'ok' : v3d >= 100 ? 'warn' : 'mu';
+      return '<div class="card">' +
+        '<div class="card-title"><span class="icon">&#x1F3AE;</span> GPU (VideoCore VII)</div>' +
+        row('V3D Clock', v3d !== null && v3d !== undefined ? v3d.toFixed(0) + ' MHz' : 'N/A', v3dCls) +
+        row('HEVC Decode', hevc !== null && hevc !== undefined ? hevc.toFixed(0) + ' MHz' : 'N/A', 'cyan') +
+        row('GPU Memory', mem !== null && mem !== undefined ? mem + ' MB' : 'N/A', 'blue') +
+        '</div>';
+    }
+</script>

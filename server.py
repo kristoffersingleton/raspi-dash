@@ -38,6 +38,8 @@ class StatsCollector:
         self._prev_netdev_time = 0
         self._prev_diskstats = {}
         self._prev_diskstats_time = 0
+        self._prev_cpu_stat = {}
+        self._prev_cpu_stat_time = 0
 
     def _system(self):
         try:
@@ -84,6 +86,21 @@ class StatsCollector:
 
         cpu_count = os.cpu_count() or 0
 
+        ntp_synced = False
+        timezone = 'Unknown'
+        try:
+            result = subprocess.run(
+                ['timedatectl', 'show', '--property', 'NTPSynchronized', '--property', 'Timezone'],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.strip().split('\n'):
+                if line.startswith('NTPSynchronized='):
+                    ntp_synced = line.split('=', 1)[1].strip().lower() == 'yes'
+                elif line.startswith('Timezone='):
+                    timezone = line.split('=', 1)[1].strip()
+        except Exception:
+            pass
+
         return {
             'hostname': hostname,
             'model': model,
@@ -91,6 +108,8 @@ class StatsCollector:
             'kernel': kernel,
             'uptime': uptime,
             'cpu_count': cpu_count,
+            'ntp_synced': ntp_synced,
+            'timezone': timezone,
         }
 
     def _cpu(self):
@@ -131,6 +150,43 @@ class StatsCollector:
         except Exception:
             pass
 
+        cores = None
+        try:
+            now_stat = time.time()
+            current_stat = {}
+            with open('/proc/stat', 'r') as f:
+                for line in f:
+                    m = re.match(r'^(cpu\d+)\s+(.*)', line)
+                    if m:
+                        core_id = m.group(1)
+                        vals = list(map(int, m.group(2).split()))
+                        user    = vals[0] if len(vals) > 0 else 0
+                        nice    = vals[1] if len(vals) > 1 else 0
+                        sys_    = vals[2] if len(vals) > 2 else 0
+                        idle    = vals[3] if len(vals) > 3 else 0
+                        iowait  = vals[4] if len(vals) > 4 else 0
+                        irq     = vals[5] if len(vals) > 5 else 0
+                        softirq = vals[6] if len(vals) > 6 else 0
+                        steal   = vals[7] if len(vals) > 7 else 0
+                        current_stat[core_id] = (user, nice, sys_, idle, iowait, irq, softirq, steal)
+            dt = now_stat - self._prev_cpu_stat_time if self._prev_cpu_stat_time > 0 else 0
+            if dt > 0 and self._prev_cpu_stat:
+                cores = []
+                for core_id in sorted(current_stat.keys(), key=lambda x: int(x[3:])):
+                    if core_id in self._prev_cpu_stat:
+                        curr = current_stat[core_id]
+                        prev = self._prev_cpu_stat[core_id]
+                        busy_delta = ((curr[0]-prev[0]) + (curr[1]-prev[1]) + (curr[2]-prev[2]) +
+                                      (curr[5]-prev[5]) + (curr[6]-prev[6]) + (curr[7]-prev[7]))
+                        idle_delta = (curr[3]-prev[3]) + (curr[4]-prev[4])
+                        total_delta = busy_delta + idle_delta
+                        pct = (busy_delta / total_delta * 100) if total_delta > 0 else 0.0
+                        cores.append({'id': int(core_id[3:]), 'pct': round(pct, 1)})
+            self._prev_cpu_stat = current_stat
+            self._prev_cpu_stat_time = now_stat
+        except Exception:
+            pass
+
         return {
             'freq_mhz': freq_mhz,
             'voltage': voltage,
@@ -145,6 +201,7 @@ class StatsCollector:
             'throttled_occurred': bool(throttled_int & (1 << 18)),
             'soft_temp_occurred': bool(throttled_int & (1 << 19)),
             'load_avg': load_avg,
+            'cores': cores,
         }
 
     def _temperature(self):
@@ -158,7 +215,23 @@ class StatsCollector:
             pass
 
         cpu_f = round(cpu_c * 9 / 5 + 32, 1)
-        return {'cpu_c': cpu_c, 'cpu_f': cpu_f}
+
+        rp1_c = None
+        try:
+            for i in range(10):
+                try:
+                    with open(f'/sys/class/hwmon/hwmon{i}/name', 'r') as f:
+                        if f.read().strip() == 'rp1_adc':
+                            with open(f'/sys/class/hwmon/hwmon{i}/temp1_input', 'r') as tf:
+                                rp1_c = int(tf.read().strip()) / 1000.0
+                            break
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        rp1_f = round(rp1_c * 9 / 5 + 32, 1) if rp1_c is not None else None
+
+        return {'cpu_c': cpu_c, 'cpu_f': cpu_f, 'rp1_c': rp1_c, 'rp1_f': rp1_f}
 
     def _memory(self):
         info = {}
@@ -315,6 +388,7 @@ class StatsCollector:
     def _network(self):
         now = time.time()
         current_dev = {}
+        current_errors = {}
         try:
             with open('/proc/net/dev', 'r') as f:
                 for line in f.readlines()[2:]:
@@ -325,6 +399,11 @@ class StatsCollector:
                     rx_bytes = int(parts[1])
                     tx_bytes = int(parts[9])
                     current_dev[iface] = (rx_bytes, tx_bytes)
+                    rx_errs = int(parts[3]) if len(parts) > 3 else 0
+                    rx_drop = int(parts[4]) if len(parts) > 4 else 0
+                    tx_errs = int(parts[11]) if len(parts) > 11 else 0
+                    tx_drop = int(parts[12]) if len(parts) > 12 else 0
+                    current_errors[iface] = (rx_errs, rx_drop, tx_errs, tx_drop)
         except Exception:
             pass
 
@@ -368,6 +447,7 @@ class StatsCollector:
                 continue
             iface_rates = rates.get(iface, {'rx_kbs': 0.0, 'tx_kbs': 0.0})
             iface_ip = ip_info.get(iface, {'ips': [], 'up': False})
+            errs = current_errors.get(iface, (0, 0, 0, 0))
             result_list.append({
                 'iface': iface,
                 'ips': iface_ip['ips'],
@@ -376,6 +456,10 @@ class StatsCollector:
                 'rx_kbs': iface_rates['rx_kbs'],
                 'tx_kbs': iface_rates['tx_kbs'],
                 'up': iface_ip['up'],
+                'rx_errors': errs[0],
+                'rx_dropped': errs[1],
+                'tx_errors': errs[2],
+                'tx_dropped': errs[3],
             })
 
         return result_list
@@ -634,6 +718,37 @@ class StatsCollector:
         except Exception:
             return {'available': False, 'containers': []}
 
+    def _gpu(self):
+        v3d_mhz = None
+        hevc_mhz = None
+        gpu_mem_mb = None
+
+        try:
+            result = subprocess.run(['vcgencmd', 'measure_clock', 'v3d'], capture_output=True, text=True, timeout=5)
+            m = re.search(r'frequency\(\d+\)=(\d+)', result.stdout)
+            if m:
+                v3d_mhz = int(m.group(1)) / 1e6
+        except Exception:
+            pass
+
+        try:
+            result = subprocess.run(['vcgencmd', 'measure_clock', 'hevc'], capture_output=True, text=True, timeout=5)
+            m = re.search(r'frequency\(\d+\)=(\d+)', result.stdout)
+            if m:
+                hevc_mhz = int(m.group(1)) / 1e6
+        except Exception:
+            pass
+
+        try:
+            result = subprocess.run(['vcgencmd', 'get_mem', 'gpu'], capture_output=True, text=True, timeout=5)
+            m = re.search(r'gpu=(\d+)M', result.stdout)
+            if m:
+                gpu_mem_mb = int(m.group(1))
+        except Exception:
+            pass
+
+        return {'v3d_mhz': v3d_mhz, 'hevc_mhz': hevc_mhz, 'gpu_mem_mb': gpu_mem_mb}
+
     def collect(self):
         data = {'ts': time.time()}
 
@@ -696,6 +811,11 @@ class StatsCollector:
             data['docker'] = self._docker()
         except Exception:
             data['docker'] = {'available': False, 'containers': []}
+
+        try:
+            data['gpu'] = self._gpu()
+        except Exception:
+            data['gpu'] = {}
 
         with self._lock:
             self._data = data

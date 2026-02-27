@@ -855,6 +855,33 @@ def logo():
     return Response('', status=404)
 
 
+_FAVICON_FILES = {
+    'favicon.ico': 'image/x-icon',
+    'favicon-16x16.png': 'image/png',
+    'favicon-32x32.png': 'image/png',
+    'apple-touch-icon.png': 'image/png',
+    'android-chrome-192x192.png': 'image/png',
+    'android-chrome-512x512.png': 'image/png',
+    'site.webmanifest': 'application/manifest+json',
+}
+
+@app.route('/favicon.ico')
+@app.route('/favicon-16x16.png')
+@app.route('/favicon-32x32.png')
+@app.route('/apple-touch-icon.png')
+@app.route('/android-chrome-192x192.png')
+@app.route('/android-chrome-512x512.png')
+@app.route('/site.webmanifest')
+def favicon():
+    from flask import request as _req
+    filename = _req.path.lstrip('/')
+    mime = _FAVICON_FILES.get(filename, 'application/octet-stream')
+    asset_path = pathlib.Path(__file__).parent / 'assets' / filename
+    if asset_path.exists():
+        return Response(asset_path.read_bytes(), mimetype=mime)
+    return Response('', status=404)
+
+
 @app.route('/api/stats')
 def api_stats():
     data = collector.get()

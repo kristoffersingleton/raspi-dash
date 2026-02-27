@@ -28,7 +28,7 @@
     .logo { font-size: 22px; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; }
     .logo span { color: var(--green); }
     .badges { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .badge { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); }
+    .badge { position: relative; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); }
     .badge.ok { background: rgba(61,214,140,0.1); border-color: rgba(61,214,140,0.3); color: var(--green); }
     .badge.warn { background: rgba(245,197,66,0.1); border-color: rgba(245,197,66,0.3); color: var(--yellow); }
     .badge.err { background: rgba(242,107,107,0.1); border-color: rgba(242,107,107,0.3); color: var(--red); }
@@ -36,6 +36,7 @@
     .dot.pulse { animation: pulse 2s ease-in-out infinite; }
     @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 currentColor} 50%{opacity:.7;box-shadow:0 0 6px 2px currentColor} }
     .updated { font-size: 11px; color: var(--muted); }
+    [data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; top: calc(100% + 8px); right: 0; background: var(--card); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--text); white-space: pre-line; width: max-content; max-width: 260px; z-index: 200; box-shadow: 0 4px 16px rgba(0,0,0,0.5); line-height: 1.5; pointer-events: none; }
 
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
     @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, 1fr); } }
@@ -130,7 +131,7 @@
     <div class="logo" style="display:flex;align-items:center;gap:10px"><img src="/logo.png" width="40" height="40" style="border-radius:50%">Raspi<span>Dash</span></div>
     <div class="badges">
       <div id="tempBadge" class="badge ok"><span class="dot pulse"></span>--&#176;C</div>
-      <div id="throttleBadge" class="badge ok"><span class="dot pulse"></span>Nominal</div>
+      <div id="throttleBadge" class="badge ok" data-tooltip="All throttle flags clear&#10;No undervoltage · No freq cap · No throttle · No soft-temp limit"><span class="dot pulse"></span>Nominal</div>
       <div class="badge"><span id="updated" class="updated">Loading...</span></div>
     </div>
   </header>
@@ -205,7 +206,18 @@
           const c = d.cpu;
           const anyThrottle = c.under_voltage || c.freq_capped || c.throttled || c.soft_temp;
           throttleBadge.className = 'badge ' + (anyThrottle ? 'warn' : 'ok');
-          throttleBadge.innerHTML = anyThrottle ? '<span class="dot pulse"></span>Throttled' : '<span class="dot pulse"></span>Nominal';
+          if (anyThrottle) {
+            const flags = [];
+            if (c.under_voltage) flags.push('• Under-voltage detected');
+            if (c.freq_capped)   flags.push('• Frequency cap active');
+            if (c.throttled)     flags.push('• ARM throttled');
+            if (c.soft_temp)     flags.push('• Soft temperature limit');
+            throttleBadge.dataset.tooltip = 'Active throttle conditions:\n' + flags.join('\n');
+            throttleBadge.innerHTML = '<span class="dot pulse"></span>Throttled';
+          } else {
+            throttleBadge.dataset.tooltip = 'All throttle flags clear\nNo undervoltage · No freq cap · No throttle · No soft-temp limit';
+            throttleBadge.innerHTML = '<span class="dot pulse"></span>Nominal';
+          }
         }
 
         document.getElementById('updated').textContent = 'Updated just now \u00b7 polls: ' + _polls;

@@ -1,0 +1,157 @@
+<script>
+  // ── Log card state (persists across 2-second grid rebuilds) ──────────────
+  if (typeof window._logCache     === 'undefined') window._logCache     = null;
+  if (typeof window._logTab       === 'undefined') window._logTab       = 0;
+  if (typeof window._scrollToBottom === 'undefined') window._scrollToBottom = {};
+
+  function _escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  // Fetches /api/logs and rebuilds the card — called on page load and by Refresh button
+  function fetchLogs() {
+    // Mark as loading immediately so the next grid render shows a spinner
+    window._logCache = { loading: true };
+    var btn = document.getElementById('log-refresh-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⟳ Loading…'; }
+
+    fetch('/api/logs')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        window._logCache = data;
+        var nsrc = (data.sources || []).length;
+        if (window._logTab >= nsrc) window._logTab = 0;
+        // Signal rebuildGrid to scroll log-pre to bottom after rebuild
+        window._scrollToBottom['log-pre'] = true;
+        // Immediate grid rebuild using last stats snapshot (no extra network request)
+        if (typeof rebuildGrid === 'function' && _lastStatsData) {
+          rebuildGrid(_lastStatsData);
+        }
+        var btn = document.getElementById('log-refresh-btn');
+        if (btn) { btn.disabled = false; btn.textContent = '⟳ Refresh'; }
+      })
+      .catch(function(err) {
+        window._logCache = { sources: [{ label: 'Error', lines: [], error: String(err) }], ts: Date.now() / 1000 };
+        if (typeof rebuildGrid === 'function' && _lastStatsData) rebuildGrid(_lastStatsData);
+        var btn = document.getElementById('log-refresh-btn');
+        if (btn) { btn.disabled = false; btn.textContent = '⟳ Refresh'; }
+      });
+  }
+
+  // Switches the active tab — updates DOM directly without waiting for poll cycle
+  function switchLogTab(idx) {
+    window._logTab = idx;
+    document.querySelectorAll('.log-tab-btn').forEach(function(b, i) {
+      var active = (i === idx);
+      b.style.background  = active ? 'rgba(92,168,255,0.15)' : 'transparent';
+      b.style.borderColor = active ? 'var(--blue)' : 'var(--card-border)';
+      b.style.color       = active ? 'var(--blue)'  : 'var(--muted)';
+    });
+    var pre = document.getElementById('log-pre');
+    if (!pre || !window._logCache) return;
+    var src = (window._logCache.sources || [])[idx];
+    if (!src) return;
+    if (src.error) {
+      pre.style.color = 'var(--red)';
+      pre.textContent = 'Error: ' + src.error;
+    } else if (!src.lines || !src.lines.length) {
+      pre.style.color = 'var(--muted)';
+      pre.textContent = '(no output)';
+    } else {
+      pre.style.color = 'var(--text)';
+      pre.textContent = src.lines.join('\n');
+      pre.scrollTop = pre.scrollHeight;
+    }
+  }
+
+  // Main card render function — called by the 2-second poll loop
+  function cardLogs(d) {
+    var tsStr = '';
+    if (window._logCache && window._logCache.ts) {
+      tsStr = new Date(window._logCache.ts * 1000).toLocaleTimeString();
+    }
+
+    var titleBar =
+      '<div class="card-title">' +
+        '<span class="icon">&#x1F4CB;</span> Logs' +
+        '<div style="margin-left:auto;display:flex;align-items:center;gap:10px">' +
+          '<span id="log-ts" style="font-size:11px;color:var(--muted);font-weight:400">' +
+            (tsStr ? 'Loaded&nbsp;' + _escHtml(tsStr) : '') +
+          '</span>' +
+          '<button id="log-refresh-btn" onclick="fetchLogs()" ' +
+            'style="padding:4px 12px;border-radius:6px;border:1px solid var(--card-border);' +
+            'background:transparent;color:var(--blue);font-size:11px;cursor:pointer;' +
+            'font-family:inherit;transition:all .15s">&#x27F3; Refresh</button>' +
+        '</div>' +
+      '</div>';
+
+    if (window._logCache === null || window._logCache.loading) {
+      var msg = window._logCache && window._logCache.loading
+        ? '<span style="animation:pulse 1.5s ease-in-out infinite;display:inline-block">&#x23F3;</span>&nbsp; Loading logs…'
+        : 'Click <b style="color:var(--blue)">Refresh</b> to load log sources.';
+      return '<div class="card span3">' + titleBar +
+        '<div style="color:var(--muted);font-size:12px;padding:28px 0;text-align:center">' + msg + '</div></div>';
+    }
+
+    var sources = window._logCache.sources || [];
+    var tab = Math.max(0, Math.min(window._logTab, sources.length - 1));
+
+    // Tab bar
+    var tabBar = '';
+    if (sources.length > 1) {
+      tabBar = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
+        sources.map(function(src, i) {
+          var active  = (i === tab);
+          var hasErr  = !!src.error;
+          var bc = active ? 'var(--blue)' : (hasErr ? 'rgba(242,107,107,0.4)' : 'var(--card-border)');
+          var bg = active ? 'rgba(92,168,255,0.15)' : 'transparent';
+          var fc = active ? 'var(--blue)' : (hasErr ? 'var(--red)' : 'var(--muted)');
+          return '<button class="log-tab-btn" onclick="switchLogTab(' + i + ')" ' +
+            'style="padding:4px 12px;border-radius:6px;border:1px solid ' + bc + ';' +
+            'background:' + bg + ';color:' + fc + ';font-size:11px;cursor:pointer;' +
+            'font-family:inherit;transition:all .15s">' +
+            _escHtml(src.label) + (hasErr ? ' &#x26A0;' : '') +
+            '</button>';
+        }).join('') +
+      '</div>';
+    }
+
+    // Log content
+    var activeSrc = sources[tab] || { lines: [], error: null, label: '' };
+    var lineCount = (activeSrc.lines || []).length;
+    var lineInfo = '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-align:right">' +
+      (activeSrc.error ? '' : lineCount + ' line' + (lineCount !== 1 ? 's' : '')) +
+      '</div>';
+
+    var preColor, preText;
+    if (activeSrc.error) {
+      preColor = 'color:var(--red)';
+      preText  = 'Error: ' + _escHtml(activeSrc.error);
+    } else if (!lineCount) {
+      preColor = 'color:var(--muted)';
+      preText  = '(no output)';
+    } else {
+      preColor = 'color:var(--text)';
+      preText  = activeSrc.lines.map(_escHtml).join('\n');
+    }
+
+    var pre =
+      '<pre id="log-pre" data-scroll-id="log-pre" ' +
+        'style="width:100%;height:340px;overflow-y:auto;' +
+        'background:rgba(0,0,0,0.3);border:1px solid var(--card-border);border-radius:8px;' +
+        'padding:12px;margin:0;' +
+        'font-family:ui-monospace,\'SF Mono\',\'Fira Code\',monospace;' +
+        'font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;' +
+        preColor + '">' +
+      preText +
+      '</pre>';
+
+    return '<div class="card span3">' + titleBar + tabBar + lineInfo + pre + '</div>';
+  }
+
+  // Auto-fetch logs on page load (deferred so the stats poll runs first)
+  setTimeout(fetchLogs, 800);
+</script>

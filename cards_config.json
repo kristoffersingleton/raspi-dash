@@ -11,5 +11,6 @@
   { "key": "services",    "fn": "cardServices",  "template": "services",    "enabled": true },
   { "key": "gpio",        "fn": "cardGpio",      "template": "gpio",        "enabled": true },
   { "key": "usb",         "fn": "cardUsb",       "template": "usb",         "enabled": true },
-  { "key": "docker",      "fn": "cardDocker",    "template": "docker",      "enabled": true }
+  { "key": "docker",      "fn": "cardDocker",    "template": "docker",      "enabled": true },
+  { "key": "logs",        "fn": "cardLogs",      "template": "logs",        "enabled": true }
 ]

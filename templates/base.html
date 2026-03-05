@@ -150,6 +150,7 @@
     let _polls = 0;
     let _fanMode = 3;
     let _startTime = Date.now();
+    let _lastStatsData = null;
 
     function fmtBytes(b, decimals) {
       if (decimals === undefined) decimals = 1;
@@ -193,11 +194,37 @@
   {% endfor %}
 
   <script>
+    function rebuildGrid(d) {
+      // Preserve scroll positions of scrollable card elements across rebuilds
+      const scrollPos = {};
+      document.querySelectorAll('[data-scroll-id]').forEach(function(el) {
+        scrollPos[el.dataset.scrollId] = el.scrollTop;
+      });
+
+      const grid = document.getElementById('grid');
+      grid.innerHTML =
+        {% for card in cards %}
+        {{ card.fn }}(d.{{ card.key }}){% if not loop.last %} +{% endif %}
+
+        {% endfor %};
+
+      document.querySelectorAll('[data-scroll-id]').forEach(function(el) {
+        const sid = el.dataset.scrollId;
+        if (window._scrollToBottom && window._scrollToBottom[sid]) {
+          el.scrollTop = el.scrollHeight;
+          delete window._scrollToBottom[sid];
+        } else if (scrollPos[sid] !== undefined) {
+          el.scrollTop = scrollPos[sid];
+        }
+      });
+    }
+
     async function refresh() {
       try {
         const res = await fetch('/api/stats');
         const d = await res.json();
         _polls++;
+        _lastStatsData = d;
 
         const tempBadge = document.getElementById('tempBadge');
         if (d.temperature && tempBadge) {
@@ -231,12 +258,7 @@
         const pollCount = document.getElementById('pollCount');
         if (pollCount) pollCount.textContent = 'Poll #' + _polls;
 
-        const grid = document.getElementById('grid');
-        grid.innerHTML =
-          {% for card in cards %}
-          {{ card.fn }}(d.{{ card.key }}){% if not loop.last %} +{% endif %}
-
-          {% endfor %};
+        rebuildGrid(d);
 
       } catch(e) {
         console.warn('Refresh error:', e);

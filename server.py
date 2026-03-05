@@ -30,6 +30,40 @@ PHYS_PINS = [
 ]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Log Sources — shown in the Logs card.  Comment out any source to hide it.
+#
+# Types:
+#   "journald"  systemd journal — with source: unit name, or source: null for
+#               all units (system-wide view)
+#   "dmesg"     kernel ring buffer:    dmesg --time-format iso
+#   "file"      plain log file:        tail -n <lines> <source>
+# ─────────────────────────────────────────────────────────────────────────────
+LOG_SOURCES = {
+    # Kernel ring buffer — hardware events, driver errors, USB hotplug, I2C/SPI,
+    # thermal throttle, OOM kills.  Essential on Pi.
+    "Kernel":    {"type": "dmesg",    "source": None,              "lines": 60},
+    # All systemd units — broad system view: service starts/stops, boot events,
+    # crash restarts.  source: null means no -u filter (system-wide journal).
+    "System":    {"type": "journald", "source": None,              "lines": 60},
+    # SSH logins and auth events.
+    "SSH":       {"type": "journald", "source": "ssh",             "lines": 40},
+    # NetworkManager — WiFi/Ethernet connect, DHCP, interface changes.
+    "Network":   {"type": "journald", "source": "NetworkManager",  "lines": 40},
+    # Docker daemon — container start/stop/crash events.
+    "Docker":    {"type": "journald", "source": "docker",          "lines": 40},
+
+    # ── Uncomment as needed ──────────────────────────────────────────────────
+    # "Bluetooth":  {"type": "journald", "source": "bluetooth",    "lines": 30},
+    # "Cron":       {"type": "journald", "source": "cron",         "lines": 30},
+    # "Fail2ban":   {"type": "journald", "source": "fail2ban",     "lines": 30},
+    # "Nginx":      {"type": "journald", "source": "nginx",        "lines": 30},
+    # "Syslog":     {"type": "file",     "source": "/var/log/syslog",   "lines": 60},
+    # "Auth":       {"type": "file",     "source": "/var/log/auth.log", "lines": 40},
+    # "Pironman5":  {"type": "journald", "source": "pironman5",    "lines": 40},
+}
+
+
 class StatsCollector:
     def __init__(self):
         self._data = {}
@@ -817,6 +851,8 @@ class StatsCollector:
         except Exception:
             data['gpu'] = {}
 
+        data['logs'] = {'sources': list(LOG_SOURCES.keys())}
+
         with self._lock:
             self._data = data
 
@@ -834,6 +870,50 @@ class StatsCollector:
 
 
 _fan_mode = 3  # default balanced
+
+
+def _fetch_log_source(label, cfg):
+    n      = cfg.get('lines', 40)
+    kind   = cfg.get('type', 'journald')
+    source = cfg.get('source')
+    try:
+        if kind == 'dmesg':
+            raw = subprocess.check_output(
+                ['dmesg', '--time-format', 'iso', '--color=never'],
+                stderr=subprocess.DEVNULL, timeout=8,
+            ).decode('utf-8', errors='replace')
+            lines = raw.splitlines()[-n:]
+
+        elif kind == 'journald':
+            cmd = ['journalctl', '-n', str(n), '--no-pager', '--output=short-iso']
+            if source:
+                cmd += ['-u', source]
+            raw = subprocess.check_output(
+                cmd, stderr=subprocess.DEVNULL, timeout=8,
+            ).decode('utf-8', errors='replace')
+            lines = [l for l in raw.splitlines() if l.strip()]
+
+        elif kind == 'file':
+            if not source or not os.path.isfile(source):
+                return {'label': label, 'lines': [], 'error': f'File not found: {source}'}
+            raw = subprocess.check_output(
+                ['tail', '-n', str(n), source],
+                stderr=subprocess.DEVNULL, timeout=5,
+            ).decode('utf-8', errors='replace')
+            lines = raw.splitlines()
+
+        else:
+            return {'label': label, 'lines': [], 'error': f'Unknown type: {kind!r}'}
+
+        return {'label': label, 'lines': lines, 'error': None}
+
+    except subprocess.TimeoutExpired:
+        return {'label': label, 'lines': [], 'error': 'Timed out'}
+    except subprocess.CalledProcessError as e:
+        return {'label': label, 'lines': [], 'error': f'Command exited {e.returncode}'}
+    except Exception as e:
+        return {'label': label, 'lines': [], 'error': str(e)}
+
 
 _config_path = pathlib.Path(__file__).parent / 'cards_config.json'
 _cards = [c for c in json.loads(_config_path.read_text()) if c.get('enabled', True)]
@@ -898,6 +978,15 @@ def api_fan_mode():
         return Response(json.dumps({'ok': True}), mimetype='application/json')
     except Exception as e:
         return Response(json.dumps({'ok': False, 'error': str(e)}), mimetype='application/json', status=400)
+
+
+@app.route('/api/logs')
+def api_logs():
+    sources = [_fetch_log_source(lbl, cfg) for lbl, cfg in LOG_SOURCES.items()]
+    return Response(
+        json.dumps({'sources': sources, 'ts': time.time()}),
+        mimetype='application/json',
+    )
 
 
 if __name__ == '__main__':

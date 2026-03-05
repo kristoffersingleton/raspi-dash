@@ -148,6 +148,12 @@ sudo systemctl status raspidash
 
 The dashboard will now start on every boot and restart automatically if it crashes.
 
+## Branches
+
+`main` — stable dashboard with no extra dependencies beyond Flask.
+
+`logdisplay` — experimental branch that adds a live log card streaming systemd journal entries. Kept separate because it pulls in additional dependencies.
+
 ## License
 
 Apache 2.0
